@@ -97,6 +97,9 @@ function enviarMensagem() {
 
 
   if (texto === "") return;
+  /* XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXx */
+  /* XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXx */
+  console.log('mensagem: ',texto)
 
   const dados = {
     to: destinatario,
@@ -122,6 +125,7 @@ function enviarMensagem() {
   requisicao.then(res => {
     const bolinha = res.data
     console.log(bolinha)
+    console.log('entrou no then')
   })
   /* XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXx */
   /* XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXx */

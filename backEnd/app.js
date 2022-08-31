@@ -25,7 +25,71 @@ const users = [
     }
 ];
 
-const messages = [];
+const messages = [
+    {
+        "to": "Maria",
+        "text": "vai funfar sim!!!",
+        "type": "message",
+        "from": "narutin",
+        "time": "15-00-00",
+        "id": 1661968800446
+    },
+    {
+        "to": "narutin",
+        "text": "bora codar",
+        "type": "message",
+        "from": "maria",
+        "time": "15-00-01",
+        "id": 1661968801118
+    },
+    {
+        "to": "renata",
+        "text": "piratinha bolado",
+        "type": "private_message",
+        "from": "hugo",
+        "time": "15-00-09",
+        "id": 1661968809424
+    },
+    {
+        "to": "victor",
+        "text": "vai funfar sim!!!",
+        "type": "private_message",
+        "from": "renata",
+        "time": "15-00-09",
+        "id": 1661968809785
+    },{
+        "to": "Maria",
+        "text": "vai funfar sim!!!",
+        "type": "message",
+        "from": "narutin",
+        "time": "15-00-00",
+        "id": 1661968800446
+    },
+    {
+        "to": "narutin",
+        "text": "bora codar",
+        "type": "message",
+        "from": "maria",
+        "time": "15-00-01",
+        "id": 1661968801118
+    },
+    {
+        "to": "renata",
+        "text": "piratinha bolado",
+        "type": "private_message",
+        "from": "hugo",
+        "time": "15-00-09",
+        "id": 1661968809424
+    },
+    {
+        "to": "victor",
+        "text": "vai funfar sim!!!",
+        "type": "private_message",
+        "from": "renata",
+        "time": "15-00-09",
+        "id": 1661968809785
+    },
+];
 
 app.post('/participants', (req, res) => { //Login
     const { name } = req.body
@@ -68,19 +132,31 @@ app.post('/messages', (req, res) => {
 
     const time = dayjs(new Date()).format('HH-mm-ss')
 
-    let message = {...userMessage,
-    from: user,
-    time: time,
-    id: Date.now(),
+    let message = {
+        ...userMessage,
+        from: user,
+        time: time,
+        id: Date.now(),
     }
 
     messages.push(message)
-
     res.send(messages)
 })
 
 app.get('/messages', (req, res) => {
+    const { user: username } = req.headers
+    const { limit } = req.query;
 
+    // vou ter q pegar as mensagens com mongo
+    const showMessages = messages.filter((message) => {
+        if (message.type === 'private_message' && (message.to !== username || message.from !== username)) {
+            return false;
+        }
+        return true;
+    })
+
+    const limitMessages = showMessages.slice(0,limit)
+    res.send(limitMessages)
 })
 
 app.post('/status', (req, res) => {
