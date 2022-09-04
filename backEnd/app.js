@@ -134,12 +134,10 @@ app.post('/messages', async (req, res) => {
 app.get('/messages', async (req, res) => {
     const { User: username } = req.headers
     const { limit } = req.query;
-    // console.log(limit)
 
     //find & showMessages
     try {
         const response = await db.collection('messages').find().toArray()
-        console.log(response)
 
         const showMessages = response.filter((message) => {
             if (message.type === 'private_message' && (message.to !== username || message.from !== username)) {
@@ -189,7 +187,6 @@ app.post('/status', async (req, res) => {
 app.delete('/participants/:id', async (req, res) => {
     //ACHO Q ISSO AQUI ENTRA NO STATUS COM O SET INTERVAL
     const { id } = req.params
-    console.log(id)
 
     try {
         const response = await db.collection('participants').deleteOne({ _id: new ObjectId(id) })
@@ -230,27 +227,26 @@ app.put('/messages/:id', async (req, res) => {
         from: username,
     }
 
-    // // validação
-    //     // if -> from
-    // const user = await db.collection('participants').findOne({username: username})
+    // validação
+        // if -> from
+    const user = await db.collection('participants').findOne({username: username})
 
-    // if (user) {
-    //     res.status(422).send({ error: 'Esse usuário não está logado.' })
-    //     return;
-    // };
-    //     // joi -> to, text, type
+    if (user) {
+        res.status(422).send({ error: 'Esse usuário não está logado.' })
+        return;
+    };
+        // joi -> to, text, type
 
-    // const validation = newMessageSchema.validate(newMessage)
+    const validation = newMessageSchema.validate(newMessage)
 
-    // if (validation.error) {
-    //     res.sendStatus(422)
-    //     return;
-    // }
+    if (validation.error) {
+        res.sendStatus(422)
+        return;
+    }
 
     try {
         const message = await db.collection('messages').findOne({ _id: new ObjectId(id) })
 
-        console.log(message)
         if (!message) {
             res.status(404).send(message)
             return;
@@ -271,20 +267,34 @@ app.put('/messages/:id', async (req, res) => {
 });
 
 
-
-// async function verifyOnline() {
-
-//     try {
-//         const users = await db.collection('participants').find().toArray()
-//         console.log(users)
-
-//     } catch (error) {
-//         console.error(error)
-//     }
+setInterval( async () => {
 
 
-//     const usersOut = users.map((value) => (Date.now() - users.time >= 15000))
-// }
-// verifyOnline()
+    try {
+        const users = await db.collection('participants').find().toArray();
+        const usersOff = users.filter(user => Date.now() - user.lastStatus > 10000)
+        
+        usersOff.forEach(user => {
+            db.collection('participants').deleteOne({ _id: new ObjectId(user._id) })
+
+            const time = dayjs(new Date()).format('HH-mm-ss')
+
+            const message = {
+                from: user.username,
+                to: 'Todos',
+                text: 'sai da sala...',
+                type: 'status',
+                time: time,
+            }
+
+            db.collection('messages').insertOne({...message});
+        });
+
+    } catch (error) {
+        console.error(error);
+        res.sendStatus(500);
+    }
+}, 15000)
+
 
 app.listen(PORT, () => console.log('ligou hein'));
