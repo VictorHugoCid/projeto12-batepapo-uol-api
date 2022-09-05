@@ -4,6 +4,7 @@ import dayjs from 'dayjs';
 import { MongoClient, ObjectId } from "mongodb";
 import dotenv from 'dotenv';
 import joi from 'joi';
+import { stripHtml } from "string-strip-html";
 
 dotenv.config()
 
@@ -32,10 +33,22 @@ const messageSchema = joi.object({
     time: joi.string(),
 })
 
+const newMessageSchema = joi.object({
+    from: joi.string().required(),
+    to: joi.string().required(),
+    text: joi.string().required(),
+    type: joi.string().required().valid("message", "private_message"),
+})
+
 // Participants ---------------------------------------------------
 
 app.post('/participants', async (req, res) => { //Login
-    const { name: username } = req.body
+    const { name } = req.body
+    const username = name.trim()
+
+    // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXx
+    console.log(stripHtml(name).result.trim())
+    // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXx
 
     //validação com joi
     const validation = userSchema.validate(req.body);
@@ -68,8 +81,9 @@ app.post('/participants', async (req, res) => { //Login
 
     try {
         const responsePart = await db.collection('participants').insertOne({ username: username, lastStatus: Date.now() })
-        const responseMessage = await db.collection('messages').insertOne( {...message} )
-        res.send(responsePart)
+        const responseMessage = await db.collection('messages').insertOne({ ...message })
+
+        res.sendStatus(201)
     } catch (error) {
         console.error(error)
         res.sendStatus(422)
@@ -91,16 +105,22 @@ app.get('/participants', async (req, res) => {
 // Messages------------------------------------------------------------------
 
 app.post('/messages', async (req, res) => {
-    const userMessage = req.body
+    const {to, text, type} = req.body
     const { user: username } = req.headers
 
     const time = dayjs(new Date()).format('HH-mm-ss')
 
     const message = {
-        ...userMessage,
+        to: stripHtml(to).result.trim(),
+        text: stripHtml(text).result.trim(),
+        type: stripHtml(type).result.trim(),
         from: username,
         time: time,
     }
+
+        // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXx
+        console.log(message)
+        // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXx
 
     //validação
     // if -> from
@@ -122,7 +142,7 @@ app.post('/messages', async (req, res) => {
 
     // insertOne
     try {
-        const response = await db.collection('messages').insertOne( {...message} );
+        const response = await db.collection('messages').insertOne({ ...message });
         res.sendStatus(201)
     } catch (error) {
         console.error(error)
@@ -146,7 +166,7 @@ app.get('/messages', async (req, res) => {
             return true;
         })
 
-        const limitMessages = showMessages.slice(0, limit)
+        const limitMessages = showMessages.slice(-limit)
         res.send(limitMessages);
     } catch (error) {
         console.error(error)
@@ -184,19 +204,6 @@ app.post('/status', async (req, res) => {
 })
 
 //delete--------------------------------------------------------------------
-app.delete('/participants/:id', async (req, res) => {
-    //ACHO Q ISSO AQUI ENTRA NO STATUS COM O SET INTERVAL
-    const { id } = req.params
-
-    try {
-        const response = await db.collection('participants').deleteOne({ _id: new ObjectId(id) })
-        res.send(response)
-    } catch (error) {
-        console.error(error)
-        res.sendStatus(404)
-    }
-
-});
 
 app.delete('/messages/:id', async (req, res) => {
     const { id } = req.params
@@ -210,32 +217,29 @@ app.delete('/messages/:id', async (req, res) => {
     }
 });
 
-//  editar--------------------------------------------------------------------
+//  Update--------------------------------------------------------------------
 
-const newMessageSchema = joi.object({
-    from: joi.string().required(),
-    to: joi.string().required(),
-    text: joi.string().required(),
-    type: joi.string().required().valid("message", "private_message"),
-})
 app.put('/messages/:id', async (req, res) => {
     const { id } = req.params
     const { user: username } = req.headers
+    const {to, text, type} = req.body
 
     const newMessage = {
-        ...req.body,
+        to: stripHtml(to).result.trim(),
+        text: stripHtml(text).result.trim(),
+        type: stripHtml(type).result.trim(),
         from: username,
     }
 
     // validação
-        // if -> from
-    const user = await db.collection('participants').findOne({username: username})
+    // if -> from
+    const user = await db.collection('participants').findOne({ username: username })
 
-    if (user) {
+    if (!user) {
         res.status(422).send({ error: 'Esse usuário não está logado.' })
         return;
     };
-        // joi -> to, text, type
+    // joi -> to, text, type
 
     const validation = newMessageSchema.validate(newMessage)
 
@@ -256,7 +260,7 @@ app.put('/messages/:id', async (req, res) => {
             res.status(401).send(message)
             return;
         }
-        await db.collection('messages').updateOne({_id: new ObjectId(id)},{ $set: newMessage })
+        await db.collection('messages').updateOne({ _id: new ObjectId(id) }, { $set: newMessage })
 
         res.sendStatus(200)
     } catch (error) {
@@ -267,13 +271,13 @@ app.put('/messages/:id', async (req, res) => {
 });
 
 
-setInterval( async () => {
+setInterval(async () => {
 
 
     try {
         const users = await db.collection('participants').find().toArray();
         const usersOff = users.filter(user => Date.now() - user.lastStatus > 10000)
-        
+
         usersOff.forEach(user => {
             db.collection('participants').deleteOne({ _id: new ObjectId(user._id) })
 
@@ -287,7 +291,7 @@ setInterval( async () => {
                 time: time,
             }
 
-            db.collection('messages').insertOne({...message});
+            db.collection('messages').insertOne({ ...message });
         });
 
     } catch (error) {
